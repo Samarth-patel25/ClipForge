@@ -1,5 +1,6 @@
 const path = require("path");
 const { extractAudio } = require("../services/ffmpegService");
+const { transcribeAudio } = require("../services/whisperService");
 
 const uploadVideo = async (req, res) => {
     if (!req.file) {
@@ -18,27 +19,33 @@ const uploadVideo = async (req, res) => {
         audioFileName
     );
 
-    try {
-        await extractAudio(videoPath, audioPath);
+   try {
+    await extractAudio(videoPath, audioPath);
 
-        res.status(200).json({
-            success: true,
-            message: "Video uploaded and audio extracted successfully",
-            video: {
-                originalName: req.file.originalname,
-                fileName: req.file.filename,
-                size: req.file.size
-            },
-            audio: {
-                fileName: audioFileName
-            }
-        });
+    const transcript = await transcribeAudio(audioPath);
+
+    console.log("Whisper transcript:");
+    console.log(JSON.stringify(transcript, null, 2));   
+    
+    res.status(200).json({
+        success: true,
+        message: "Video processed successfully",
+        video: {
+            originalName: req.file.originalname,
+            fileName: req.file.filename,
+            size: req.file.size
+        },
+        audio: {
+            fileName: audioFileName
+        },
+        transcript
+    });
     } catch (error) {
-        console.error("FFmpeg error:", error);
+        console.error("Processing error:", error);
 
         res.status(500).json({
             success: false,
-            message: "Video uploaded, but audio extraction failed"
+            message: "Video processing failed"
         });
     }
 };
